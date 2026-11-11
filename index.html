@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LabLight · Ley del inverso del cuadrado</title>
+<style>
+:root{--bg:#F2F4F7;--sf:#fff;--tx:#16233B;--mu:#5B677A;--ln:#D6DCE4;--ac:#E8A317;--oa:#16233B;--te:#17798A;--pt:#16233B;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E1522;--sf:#172031;--tx:#E7ECF4;--mu:#9AA7BA;--ln:#2A3649;--ac:#F0B33A;--oa:#101828;--te:#4FC3D6;--pt:#E7ECF4;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E1522;--sf:#172031;--tx:#E7ECF4;--mu:#9AA7BA;--ln:#2A3649;--ac:#F0B33A;--oa:#101828;--te:#4FC3D6;--pt:#E7ECF4;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:860px;margin:0 auto;padding:20px 18px 48px}
+h1{font:600 30px/1.1 Georgia,"Times New Roman",serif;margin:0}
+h2{font:600 22px/1.2 Georgia,"Times New Roman",serif;margin:0 0 10px}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.sub{color:var(--mu);margin:4px 0 0}
+.badge{border:1px solid var(--ac);color:var(--tx);border-radius:99px;padding:3px 12px;font-size:13px}
+.steps{display:flex;gap:6px;margin-bottom:22px}
+.steps div{flex:1;padding:8px 0;border-bottom:3px solid var(--ln);color:var(--mu);font-size:14px}
+.steps .on{border-color:var(--ac);color:var(--tx);font-weight:600}
+.steps .ok{border-color:var(--te)}
+section{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:22px}
+[hidden]{display:none!important}
+label{display:block;margin:16px 0 4px;font-weight:600}
+output{font-variant-numeric:tabular-nums;color:var(--te);font-weight:700}
+input[type=range]{width:100%;accent-color:var(--ac);min-height:32px}
+.hint{color:var(--mu);font-size:14px;margin:6px 0}
+button{font:inherit;font-weight:700;min-height:46px;padding:0 24px;border-radius:8px;border:2px solid var(--ac);background:var(--ac);color:var(--oa);cursor:pointer;margin:18px 10px 0 0}
+button.alt{background:transparent;color:var(--tx)}
+button:disabled{opacity:.45;cursor:not-allowed}
+:focus-visible{outline:3px solid var(--te);outline-offset:2px}
+svg{width:100%;height:auto;display:block}
+.live{display:flex;align-items:baseline;gap:10px;margin:8px 0}
+.live b{font:600 54px/1 Georgia,serif;font-variant-numeric:tabular-nums;min-width:4ch}
+.bar{height:8px;background:var(--ln);border-radius:9px;overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--ac);transition:width .1s linear}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;min-height:30px}
+.chips span{border:1px solid var(--ln);border-radius:6px;padding:2px 10px;font-variant-numeric:tabular-nums;font-size:14px}
+.wrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:15px;min-width:460px}
+th,td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--ln)}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;color:var(--mu)}
+.kpi{display:flex;gap:26px;flex-wrap:wrap;margin:14px 0}
+.kpi div{min-width:110px}.kpi b{display:block;font:600 26px/1.2 Georgia,serif}.kpi span{color:var(--mu);font-size:14px}
+.concl{border-left:4px solid var(--te);padding:4px 14px;margin:16px 0}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body><main>
+<div class="top"><div><h1>LabLight</h1><p class="sub">Laboratorio de óptica: ley del inverso del cuadrado</p></div><span class="badge">Datos simulados</span></div>
+<div class="steps" id="steps"><div>Configuración</div><div>Captura</div><div>Resultados</div></div>
+
+<section id="v0">
+<h2>Configura el experimento</h2>
+<p>Pregunta guía: ¿cómo cambia la intensidad de la luz al alejar el sensor de la fuente, y qué tan bien sigue la ley I = k/d²?</p>
+<label for="k">Potencia de la fuente, k: <output id="ko">40</output> lx·m²</label>
+<input id="k" type="range" min="10" max="100" step="5" value="40">
+<label for="n">Ruido del sensor: <output id="no">3</output> %</label>
+<input id="n" type="range" min="0" max="10" step="1" value="3">
+<label for="a">Luz ambiente residual: <output id="ao">15</output> lx</label>
+<input id="a" type="range" min="0" max="50" step="5" value="15">
+<p class="hint">Se miden 5 distancias (0,20 a 0,60 m), con 5 repeticiones cada una y 10 lecturas por segundo. Al iniciar, el sistema calibra el cero con la luz ambiente.</p>
+<p class="hint">Esta versión genera los datos con un modelo más ruido, en lugar del sensor BH1750. Con el sensor real, el resto del flujo no cambia.</p>
+<button id="start">Iniciar experimento</button>
+</section>
+
+<section id="v1" hidden>
+<h2>Captura de datos</h2>
+<svg id="bench" viewBox="0 0 640 120" role="img" aria-label="Banco óptico con fuente de luz y sensor">
+<defs><radialGradient id="gl"><stop offset="0" stop-color="#E8A317" stop-opacity=".65"/><stop offset="1" stop-color="#E8A317" stop-opacity="0"/></radialGradient></defs>
+<circle cx="40" cy="70" r="62" fill="url(#gl)"/><circle cx="40" cy="70" r="13" fill="#E8A317"/>
+<line x1="40" y1="92" x2="600" y2="92" stroke="var(--mu)" stroke-width="2"/><g id="ticks"></g>
+<g id="sens" style="transition:transform .5s ease"><rect x="-9" y="52" width="18" height="36" rx="3" fill="var(--pt)"/><text id="sl" y="40" text-anchor="middle" font-size="14" fill="var(--tx)"></text></g></svg>
+<p id="instr" aria-live="polite"></p>
+<div class="live"><b id="live">—</b><span>lx (lectura en vivo)</span></div>
+<div class="bar"><i id="pg"></i></div>
+<p class="hint" id="rep">Repeticiones completadas: 0 de 5</p>
+<div class="chips" id="chips"></div>
+<button id="go">Medir</button>
+<div class="wrap" style="margin-top:18px"><table><thead><tr><th>Distancia d (m)</th><th>I media (lx)</th></tr></thead><tbody id="tb1"></tbody></table></div>
+</section>
+
+<section id="v2" hidden>
+<h2>Resultados</h2>
+<div id="chart"></div>
+<div class="kpi"><div><b id="kk"></b><span>k ajustado (lx·m²)</span></div><div><b id="r2"></b><span>R² del ajuste</span></div><div><b id="ex"></b><span>exponente n (esperado −2)</span></div></div>
+<div class="wrap"><table><thead><tr><th>d (m)</th><th>I media (lx)</th><th>Desv. est. (lx)</th><th>I teórica (lx)</th><th>Error (%)</th></tr></thead><tbody id="tb2"></tbody></table></div>
+<p class="hint">I teórica usa el k configurado. Con un sensor real, k sale del ajuste y la referencia pasa a ser el modelo ajustado.</p>
+<div class="concl" id="cn"></div>
+<button id="again">Repetir experimento</button><button class="alt" id="cfg">Cambiar parámetros</button>
+</section>
+</main>
+<script>
+const D=[.2,.3,.4,.5,.6],S={k:40,n:3,a:15,i:0,zero:0,data:[],busy:false,ph:'ready'};
+const $=id=>document.getElementById(id),f=(x,n=1)=>x.toFixed(n).replace('.',','),X=d=>40+d/.7*560;
+const g=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)};
+const smp=d=>Math.max(0,Math.round((S.k/(d*d)+S.a)*(1+S.n/100*g())-S.zero));
+const mean=a=>a.reduce((s,x)=>s+x,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
+function show(v){['v0','v1','v2'].forEach((id,j)=>{$(id).hidden=j!=v});[...$('steps').children].forEach((e,j)=>e.className=j==v?'on':j<v?'ok':'')}
+[['k','ko'],['n','no'],['a','ao']].forEach(([i,o])=>$(i).oninput=e=>{$(o).textContent=e.target.value;S[i]=+e.target.value});
+$('ticks').innerHTML=[0,.1,.2,.3,.4,.5,.6,.7].map(d=>`<line x1="${X(d)}" y1="88" x2="${X(d)}" y2="96" stroke="var(--mu)"/><text x="${X(d)}" y="112" text-anchor="middle" font-size="12" fill="var(--mu)">${f(d)}</text>`).join('');
+function place(){const d=D[S.i];$('sens').style.transform=`translateX(${X(d)}px)`;$('sl').textContent=f(d,2)+' m';$('instr').textContent=`Coloca el sensor a ${f(d,2)} m de la fuente y presiona Medir.`;$('live').textContent='—';$('pg').style.width='0';$('chips').innerHTML='';$('rep').textContent='Repeticiones completadas: 0 de 5';$('go').textContent='Medir';S.ph='ready'}
+function tb1(){$('tb1').innerHTML=D.map((d,j)=>`<tr><td>${f(d,2)}</td><td>${S.data[j]?f(mean(S.data[j])):'—'}</td></tr>`).join('')}
+$('start').onclick=()=>{S.data=[];S.i=0;S.zero=mean(Array.from({length:10},()=>S.a*(1+S.n/100*g())));$('sens').style.transition='none';place();void $('sens').getBoundingClientRect();$('sens').style.transition='transform .5s ease';tb1();show(1)};
+$('go').onclick=()=>{
+ if(S.busy)return;
+ if(S.ph=='done'){if(S.i<4){S.i++;place()}else res();return}
+ S.busy=true;$('go').disabled=true;let b=[],r=[];
+ const t=setInterval(()=>{const v=smp(D[S.i]);b.push(v);$('live').textContent=v;
+  if(b.length==10){r.push(mean(b));b=[];$('chips').innerHTML=r.map(x=>`<span>${f(x)} lx</span>`).join('');$('rep').textContent=`Repeticiones completadas: ${r.length} de 5`}
+  $('pg').style.width=((r.length*10+b.length)/50*100)+'%';
+  if(r.length==5){clearInterval(t);S.data[S.i]=r;S.busy=false;S.ph='done';$('go').disabled=false;$('go').textContent=S.i<4?'Siguiente distancia':'Ver resultados';tb1()}
+ },100)};
+function nice(v){const p=10**Math.floor(Math.log10(v));return [1,2,2.5,5,10].map(c=>c*p).find(c=>c>=v)}
+function res(){
+ const m=S.data.map(mean),s=S.data.map(sd),k2=m.reduce((q,y,j)=>q+y/D[j]**2,0)/D.reduce((q,d)=>q+1/d**4,0);
+ const mm=mean(m),sst=m.reduce((q,y)=>q+(y-mm)**2,0),ssr=m.reduce((q,y,j)=>q+(y-k2/D[j]**2)**2,0),r2=1-ssr/sst;
+ const lx=D.map(Math.log),ly=m.map(Math.log),ax=mean(lx),ay=mean(ly),n=lx.reduce((q,x,j)=>q+(x-ax)*(ly[j]-ay),0)/lx.reduce((q,x)=>q+(x-ax)**2,0);
+ $('kk').textContent=f(k2);$('r2').textContent=f(r2,3);$('ex').textContent=f(n,2).replace('-','−');
+ $('tb2').innerHTML=D.map((d,j)=>{const t=S.k/d**2;return`<tr><td>${f(d,2)}</td><td>${f(m[j])}</td><td>${f(s[j])}</td><td>${f(t)}</td><td>${f(Math.abs(m[j]-t)/t*100)}</td></tr>`}).join('');
+ const W=640,H=340,L=58,R=16,T=14,B=48,ym=nice(Math.max(...m.map((y,j)=>y+s[j]))*1.1),px=d=>L+(d-.1)/.6*(W-L-R),py=y=>T+(1-y/ym)*(H-T-B);
+ const d0=Math.max(.15,Math.sqrt(k2/ym));let c='';for(let j=0;j<=40;j++){const d=d0+(.68-d0)*j/40;c+=(j?'L':'M')+px(d).toFixed(1)+' '+py(k2/d**2).toFixed(1)}
+ let gr='';for(let j=0;j<=5;j++){const y=ym*j/5;gr+=`<line x1="${L}" x2="${W-R}" y1="${py(y)}" y2="${py(y)}" stroke="var(--ln)"/><text x="${L-8}" y="${py(y)+4}" text-anchor="end" font-size="12" fill="var(--mu)">${f(y,0)}</text>`}
+ for(let j=1;j<=7;j++){const d=j/10;gr+=`<text x="${px(d)}" y="${H-B+18}" text-anchor="middle" font-size="12" fill="var(--mu)">${f(d)}</text>`}
+ const pts=m.map((y,j)=>`<line x1="${px(D[j])}" x2="${px(D[j])}" y1="${py(y-s[j])}" y2="${py(y+s[j])}" stroke="var(--pt)" stroke-width="2"/><circle cx="${px(D[j])}" cy="${py(y)}" r="5" fill="var(--pt)"/>`).join('');
+ $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de intensidad versus distancia con curva teórica">${gr}<path d="${c}" fill="none" stroke="var(--te)" stroke-width="3"/>${pts}<text x="${(L+W-R)/2}" y="${H-8}" text-anchor="middle" font-size="13" fill="var(--tx)">Distancia d (m)</text><text transform="translate(14 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle" font-size="13" fill="var(--tx)">Intensidad I (lx)</text><text x="${W-R-8}" y="${T+16}" text-anchor="end" font-size="13" fill="var(--te)">Curva I = k/d² ajustada</text></svg>`;
+ const q=r2>.99&&Math.abs(n+2)<.15?'Excelente ajuste':r2>.95?'Buen ajuste':'Ajuste moderado';
+ $('cn').innerHTML=`<b>${q}.</b> Los datos siguen la ley del inverso del cuadrado: el exponente medido es ${f(n,2).replace('-','−')} (teórico −2) y R² = ${f(r2,3)}. ${r2>.99?'Las desviaciones son pequeñas frente a la intensidad medida.':'Prueba reducir el ruido o la luz ambiente y repite para ver cómo mejora el ajuste.'}`;
+ show(2)}
+$('again').onclick=()=>$('start').onclick();$('cfg').onclick=()=>show(0);
+</script></body></html>
