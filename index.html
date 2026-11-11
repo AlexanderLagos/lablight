@@ -22,6 +22,10 @@ h2{font:600 22px/1.2 Georgia,"Times New Roman",serif;margin:0 0 10px}
 section{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:22px}
 [hidden]{display:none!important}
 label{display:block;margin:16px 0 4px;font-weight:600}
+fieldset{border:0;padding:0;margin:16px 0 0}
+legend{font-weight:600;padding:0}
+label.opt{display:flex;align-items:center;gap:10px;margin:8px 0;font-weight:400;min-height:32px}
+label.opt input{width:20px;height:20px;accent-color:var(--ac);margin:0}
 output{font-variant-numeric:tabular-nums;color:var(--te);font-weight:700}
 input[type=range]{width:100%;accent-color:var(--ac);min-height:32px}
 .hint{color:var(--mu);font-size:14px;margin:6px 0}
@@ -46,20 +50,31 @@ th{font-weight:600;color:var(--mu)}
 .concl{border-left:4px solid var(--te);padding:4px 14px;margin:16px 0}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body><main>
-<div class="top"><div><h1>LabLight</h1><p class="sub">Laboratorio de óptica: ley del inverso del cuadrado</p></div><span class="badge">Datos simulados</span></div>
+<div class="top"><div><h1>LabLight</h1><p class="sub">Laboratorio de óptica: ley del inverso del cuadrado</p></div><span class="badge" id="badge">Datos simulados</span></div>
 <div class="steps" id="steps"><div>Configuración</div><div>Captura</div><div>Resultados</div></div>
 
 <section id="v0">
 <h2>Configura el experimento</h2>
 <p>Pregunta guía: ¿cómo cambia la intensidad de la luz al alejar el sensor de la fuente, y qué tan bien sigue la ley I = k/d²?</p>
+<fieldset><legend>Fuente de datos</legend>
+<label class="opt"><input type="radio" name="mode" value="sim" checked> Simulación (no necesita hardware)</label>
+<label class="opt"><input type="radio" name="mode" value="bh" id="mbh"> <span id="mbhl">Sensor BH1750 conectado por USB</span></label>
+</fieldset>
+<div id="simp">
 <label for="k">Potencia de la fuente, k: <output id="ko">40</output> lx·m²</label>
 <input id="k" type="range" min="10" max="100" step="5" value="40">
 <label for="n">Ruido del sensor: <output id="no">3</output> %</label>
 <input id="n" type="range" min="0" max="10" step="1" value="3">
 <label for="a">Luz ambiente residual: <output id="ao">15</output> lx</label>
 <input id="a" type="range" min="0" max="50" step="5" value="15">
-<p class="hint">Se miden 5 distancias (0,20 a 0,60 m), con 5 repeticiones cada una y 10 lecturas por segundo. Al iniciar, el sistema calibra el cero con la luz ambiente.</p>
-<p class="hint">Esta versión genera los datos con un modelo más ruido, en lugar del sensor BH1750. Con el sensor real, el resto del flujo no cambia.</p>
+<p class="hint">Esta opción genera los datos con el modelo I = k/d² más ruido y luz ambiente, en lugar del sensor BH1750. El resto del flujo es igual al del sensor real.</p>
+</div>
+<div id="bhp" hidden>
+<p class="hint">Conecta el Arduino con el BH1750 al computador por USB y presiona Conectar sensor. Elige el puerto del Arduino en la ventana que abre el navegador. Funciona en Chrome o Edge de computador. Cierra el Monitor Serie del Arduino IDE antes de conectar.</p>
+<button class="alt" id="conn">Conectar sensor</button>
+<p class="hint" id="cs" aria-live="polite">Sensor sin conectar.</p>
+</div>
+<p class="hint">Se miden 5 distancias (0,20 a 0,60 m), con 5 repeticiones cada una y 10 lecturas por segundo. Antes de medir, el sistema calibra el cero con la luz ambiente.</p>
 <button id="start">Iniciar experimento</button>
 </section>
 
@@ -75,7 +90,7 @@ th{font-weight:600;color:var(--mu)}
 <div class="bar"><i id="pg"></i></div>
 <p class="hint" id="rep">Repeticiones completadas: 0 de 5</p>
 <div class="chips" id="chips"></div>
-<button id="go">Medir</button>
+<button id="go">Medir</button><button class="alt" id="back">Volver a configuración</button>
 <div class="wrap" style="margin-top:18px"><table><thead><tr><th>Distancia d (m)</th><th>I media (lx)</th></tr></thead><tbody id="tb1"></tbody></table></div>
 </section>
 
@@ -84,47 +99,93 @@ th{font-weight:600;color:var(--mu)}
 <div id="chart"></div>
 <div class="kpi"><div><b id="kk"></b><span>k ajustado (lx·m²)</span></div><div><b id="r2"></b><span>R² del ajuste</span></div><div><b id="ex"></b><span>exponente n (esperado −2)</span></div></div>
 <div class="wrap"><table><thead><tr><th>d (m)</th><th>I media (lx)</th><th>Desv. est. (lx)</th><th>I teórica (lx)</th><th>Error (%)</th></tr></thead><tbody id="tb2"></tbody></table></div>
-<p class="hint">I teórica usa el k configurado. Con un sensor real, k sale del ajuste y la referencia pasa a ser el modelo ajustado.</p>
+<p class="hint" id="th"></p>
 <div class="concl" id="cn"></div>
 <button id="again">Repetir experimento</button><button class="alt" id="cfg">Cambiar parámetros</button>
 </section>
 </main>
 <script>
-const D=[.2,.3,.4,.5,.6],S={k:40,n:3,a:15,i:0,zero:0,data:[],busy:false,ph:'ready'};
+const D=[.2,.3,.4,.5,.6],S={mode:'sim',k:40,n:3,a:15,i:0,zero:0,data:[],busy:false,ph:'ready',lux:null,luxT:0};
 const $=id=>document.getElementById(id),f=(x,n=1)=>x.toFixed(n).replace('.',','),X=d=>40+d/.7*560;
 const g=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.2832*v)};
-const smp=d=>Math.max(0,Math.round((S.k/(d*d)+S.a)*(1+S.n/100*g())-S.zero));
 const mean=a=>a.reduce((s,x)=>s+x,0)/a.length,sd=a=>{const m=mean(a);return Math.sqrt(a.reduce((s,x)=>s+(x-m)**2,0)/(a.length-1))};
+const fresh=()=>Date.now()-S.luxT<1500;
+
+/* Lectura cruda en lux. d = distancia en m, o null con la fuente apagada (calibración de cero).
+   Simulación: modelo + luz ambiente + ruido. Sensor: último valor recibido del Arduino. */
+function raw(d){
+ if(S.mode=='sim')return((d==null?0:S.k/(d*d))+S.a)*(1+S.n/100*g());
+ if(!fresh())throw new Error('sin datos');
+ return S.lux}
+const clean=v=>Math.max(0,S.mode=='sim'?Math.round(v):Math.round(v*10)/10);
+
 function show(v){['v0','v1','v2'].forEach((id,j)=>{$(id).hidden=j!=v});[...$('steps').children].forEach((e,j)=>e.className=j==v?'on':j<v?'ok':'')}
 [['k','ko'],['n','no'],['a','ao']].forEach(([i,o])=>$(i).oninput=e=>{$(o).textContent=e.target.value;S[i]=+e.target.value});
 $('ticks').innerHTML=[0,.1,.2,.3,.4,.5,.6,.7].map(d=>`<line x1="${X(d)}" y1="88" x2="${X(d)}" y2="96" stroke="var(--mu)"/><text x="${X(d)}" y="112" text-anchor="middle" font-size="12" fill="var(--mu)">${f(d)}</text>`).join('');
+
+/* ---- Modo de datos y conexión serial (Web Serial API) ---- */
+if(!('serial' in navigator)){$('mbh').disabled=true;$('mbhl').textContent='Sensor BH1750 por USB (requiere Chrome o Edge de computador)'}
+function setMode(m){S.mode=m;$('simp').hidden=m!='sim';$('bhp').hidden=m!='bh';$('badge').textContent=m=='sim'?'Datos simulados':'Sensor BH1750';$('start').disabled=m=='bh'&&!fresh()}
+document.querySelectorAll('input[name=mode]').forEach(r=>r.onchange=e=>setMode(e.target.value));
+$('conn').onclick=async()=>{
+ let port;
+ try{port=await navigator.serial.requestPort();await port.open({baudRate:9600})}
+ catch(e){$('cs').textContent='No se pudo conectar: '+e.message;return}
+ $('conn').disabled=true;$('cs').textContent='Puerto abierto. Esperando lecturas del sensor…';
+ const dec=new TextDecoderStream();port.readable.pipeTo(dec.writable).catch(()=>{});
+ const rd=dec.readable.getReader();let buf='',shown=0;
+ try{for(;;){const{value,done}=await rd.read();if(done)break;buf+=value;let j;
+  while((j=buf.indexOf('\n'))>=0){const v=parseFloat(buf.slice(0,j));buf=buf.slice(j+1);
+   if(isFinite(v)&&v>=0){S.lux=v;S.luxT=Date.now();
+    if(S.luxT-shown>500){shown=S.luxT;$('cs').textContent=`Sensor conectado · ${f(v)} lx`;if(S.mode=='bh')$('start').disabled=false}}}}}
+ catch(e){}
+ S.luxT=0;$('cs').textContent='Sensor desconectado. Revisa el cable USB y vuelve a conectar.';$('conn').disabled=false;if(S.mode=='bh')$('start').disabled=true};
+
+/* ---- Captura ---- */
 function place(){const d=D[S.i];$('sens').style.transform=`translateX(${X(d)}px)`;$('sl').textContent=f(d,2)+' m';$('instr').textContent=`Coloca el sensor a ${f(d,2)} m de la fuente y presiona Medir.`;$('live').textContent='—';$('pg').style.width='0';$('chips').innerHTML='';$('rep').textContent='Repeticiones completadas: 0 de 5';$('go').textContent='Medir';S.ph='ready'}
+function zeroStep(){S.ph='zero';$('instr').textContent='Apaga la fuente de luz, cierra la caja y presiona Calibrar cero. El sistema mide la luz ambiente durante 1 segundo.';$('go').textContent='Calibrar cero';$('live').textContent='—';$('pg').style.width='0';$('chips').innerHTML='';$('rep').textContent=''}
 function tb1(){$('tb1').innerHTML=D.map((d,j)=>`<tr><td>${f(d,2)}</td><td>${S.data[j]?f(mean(S.data[j])):'—'}</td></tr>`).join('')}
-$('start').onclick=()=>{S.data=[];S.i=0;S.zero=mean(Array.from({length:10},()=>S.a*(1+S.n/100*g())));$('sens').style.transition='none';place();void $('sens').getBoundingClientRect();$('sens').style.transition='transform .5s ease';tb1();show(1)};
+function fail(t){clearInterval(t);S.busy=false;$('go').disabled=false;$('instr').textContent='No llegan datos del sensor. Revisa el cable USB, presiona Volver a configuración y conecta el sensor de nuevo.'}
+$('start').onclick=()=>{
+ if(S.mode=='bh'&&!fresh()){$('cs').textContent='Conecta el sensor antes de iniciar.';return}
+ S.data=[];S.i=0;$('sens').style.transition='none';place();void $('sens').getBoundingClientRect();$('sens').style.transition='transform .5s ease';tb1();
+ if(S.mode=='sim')S.zero=mean(Array.from({length:10},()=>raw(null)));else zeroStep();
+ show(1)};
 $('go').onclick=()=>{
  if(S.busy)return;
  if(S.ph=='done'){if(S.i<4){S.i++;place()}else res();return}
- S.busy=true;$('go').disabled=true;let b=[],r=[];
- const t=setInterval(()=>{const v=smp(D[S.i]);b.push(v);$('live').textContent=v;
+ S.busy=true;$('go').disabled=true;
+ if(S.ph=='zero'){let z=[];const t=setInterval(()=>{let v;try{v=raw(null)}catch(e){fail(t);return}
+   z.push(v);$('live').textContent=f(v);$('pg').style.width=z.length*10+'%';
+   if(z.length==10){clearInterval(t);S.zero=mean(z);S.busy=false;$('go').disabled=false;place();
+    $('instr').textContent=`Cero calibrado: ${f(S.zero)} lx de luz ambiente. Enciende la fuente, coloca el sensor a ${f(D[0],2)} m y presiona Medir.`}},100);return}
+ let b=[],r=[];
+ const t=setInterval(()=>{let v;try{v=clean(raw(D[S.i])-S.zero)}catch(e){fail(t);return}
+  b.push(v);$('live').textContent=f(v,S.mode=='sim'?0:1);
   if(b.length==10){r.push(mean(b));b=[];$('chips').innerHTML=r.map(x=>`<span>${f(x)} lx</span>`).join('');$('rep').textContent=`Repeticiones completadas: ${r.length} de 5`}
   $('pg').style.width=((r.length*10+b.length)/50*100)+'%';
   if(r.length==5){clearInterval(t);S.data[S.i]=r;S.busy=false;S.ph='done';$('go').disabled=false;$('go').textContent=S.i<4?'Siguiente distancia':'Ver resultados';tb1()}
  },100)};
+
+/* ---- Resultados: ajuste por mínimos cuadrados ---- */
 function nice(v){const p=10**Math.floor(Math.log10(v));return [1,2,2.5,5,10].map(c=>c*p).find(c=>c>=v)}
 function res(){
  const m=S.data.map(mean),s=S.data.map(sd),k2=m.reduce((q,y,j)=>q+y/D[j]**2,0)/D.reduce((q,d)=>q+1/d**4,0);
- const mm=mean(m),sst=m.reduce((q,y)=>q+(y-mm)**2,0),ssr=m.reduce((q,y,j)=>q+(y-k2/D[j]**2)**2,0),r2=1-ssr/sst;
- const lx=D.map(Math.log),ly=m.map(Math.log),ax=mean(lx),ay=mean(ly),n=lx.reduce((q,x,j)=>q+(x-ax)*(ly[j]-ay),0)/lx.reduce((q,x)=>q+(x-ax)**2,0);
- $('kk').textContent=f(k2);$('r2').textContent=f(r2,3);$('ex').textContent=f(n,2).replace('-','−');
- $('tb2').innerHTML=D.map((d,j)=>{const t=S.k/d**2;return`<tr><td>${f(d,2)}</td><td>${f(m[j])}</td><td>${f(s[j])}</td><td>${f(t)}</td><td>${f(Math.abs(m[j]-t)/t*100)}</td></tr>`}).join('');
- const W=640,H=340,L=58,R=16,T=14,B=48,ym=nice(Math.max(...m.map((y,j)=>y+s[j]))*1.1),px=d=>L+(d-.1)/.6*(W-L-R),py=y=>T+(1-y/ym)*(H-T-B);
+ const mm=mean(m),sst=m.reduce((q,y)=>q+(y-mm)**2,0),ssr=m.reduce((q,y,j)=>q+(y-k2/D[j]**2)**2,0),r2=sst>0?1-ssr/sst:0;
+ const ok=m.every(y=>y>0),lx=D.map(Math.log),ly=m.map(y=>Math.log(Math.max(y,1e-6))),ax=mean(lx),ay=mean(ly),n=lx.reduce((q,x,j)=>q+(x-ax)*(ly[j]-ay),0)/lx.reduce((q,x)=>q+(x-ax)**2,0);
+ const kr=S.mode=='sim'?S.k:k2;
+ $('kk').textContent=f(k2);$('r2').textContent=f(r2,3);$('ex').textContent=ok?f(n,2).replace('-','−'):'—';
+ $('th').textContent=S.mode=='sim'?'I teórica usa el k configurado en la simulación.':'I teórica usa el k obtenido del ajuste, porque la potencia real de la fuente no se conoce de antemano.';
+ $('tb2').innerHTML=D.map((d,j)=>{const t=kr/d**2;return`<tr><td>${f(d,2)}</td><td>${f(m[j])}</td><td>${f(s[j])}</td><td>${f(t)}</td><td>${f(Math.abs(m[j]-t)/t*100)}</td></tr>`}).join('');
+ const W=640,H=340,L=58,R=16,T=14,B=48,ym=nice(Math.max(1,...m.map((y,j)=>y+s[j]))*1.1),px=d=>L+(d-.1)/.6*(W-L-R),py=y=>T+(1-y/ym)*(H-T-B);
  const d0=Math.max(.15,Math.sqrt(k2/ym));let c='';for(let j=0;j<=40;j++){const d=d0+(.68-d0)*j/40;c+=(j?'L':'M')+px(d).toFixed(1)+' '+py(k2/d**2).toFixed(1)}
  let gr='';for(let j=0;j<=5;j++){const y=ym*j/5;gr+=`<line x1="${L}" x2="${W-R}" y1="${py(y)}" y2="${py(y)}" stroke="var(--ln)"/><text x="${L-8}" y="${py(y)+4}" text-anchor="end" font-size="12" fill="var(--mu)">${f(y,0)}</text>`}
  for(let j=1;j<=7;j++){const d=j/10;gr+=`<text x="${px(d)}" y="${H-B+18}" text-anchor="middle" font-size="12" fill="var(--mu)">${f(d)}</text>`}
- const pts=m.map((y,j)=>`<line x1="${px(D[j])}" x2="${px(D[j])}" y1="${py(y-s[j])}" y2="${py(y+s[j])}" stroke="var(--pt)" stroke-width="2"/><circle cx="${px(D[j])}" cy="${py(y)}" r="5" fill="var(--pt)"/>`).join('');
+ const pts=m.map((y,j)=>`<line x1="${px(D[j])}" x2="${px(D[j])}" y1="${py(Math.max(0,y-s[j]))}" y2="${py(y+s[j])}" stroke="var(--pt)" stroke-width="2"/><circle cx="${px(D[j])}" cy="${py(y)}" r="5" fill="var(--pt)"/>`).join('');
  $('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico de intensidad versus distancia con curva teórica">${gr}<path d="${c}" fill="none" stroke="var(--te)" stroke-width="3"/>${pts}<text x="${(L+W-R)/2}" y="${H-8}" text-anchor="middle" font-size="13" fill="var(--tx)">Distancia d (m)</text><text transform="translate(14 ${(T+H-B)/2}) rotate(-90)" text-anchor="middle" font-size="13" fill="var(--tx)">Intensidad I (lx)</text><text x="${W-R-8}" y="${T+16}" text-anchor="end" font-size="13" fill="var(--te)">Curva I = k/d² ajustada</text></svg>`;
  const q=r2>.99&&Math.abs(n+2)<.15?'Excelente ajuste':r2>.95?'Buen ajuste':'Ajuste moderado';
- $('cn').innerHTML=`<b>${q}.</b> Los datos siguen la ley del inverso del cuadrado: el exponente medido es ${f(n,2).replace('-','−')} (teórico −2) y R² = ${f(r2,3)}. ${r2>.99?'Las desviaciones son pequeñas frente a la intensidad medida.':'Prueba reducir el ruido o la luz ambiente y repite para ver cómo mejora el ajuste.'}`;
+ $('cn').innerHTML=!ok?'<b>Datos insuficientes.</b> Alguna distancia registró 0 lx. Revisa que la fuente esté encendida y repite el experimento.':`<b>${q}.</b> ${r2>.95?'Los datos siguen':'Los datos se acercan a'} la ley del inverso del cuadrado: el exponente medido es ${f(n,2).replace('-','−')} (teórico −2) y R² = ${f(r2,3)}. ${r2>.99?'Las desviaciones son pequeñas frente a la intensidad medida.':'Prueba reducir el ruido o la luz ambiente y repite para ver cómo mejora el ajuste.'}`;
  show(2)}
 $('again').onclick=()=>$('start').onclick();$('cfg').onclick=()=>show(0);
+$('back').onclick=()=>{if(!S.busy)show(0)};
 </script></body></html>
